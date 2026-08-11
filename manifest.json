@@ -1,21 +1,29 @@
 {
   "name": "Rutina & Medidas — Seguimiento",
   "short_name": "Rutina",
-  "start_url": "./index.html",
+  "description": "Seguimiento de rutina de ejercicio, medidas corporales y adherencia semanal.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait-primary",
   "background_color": "#12161A",
   "theme_color": "#12161A",
-  "orientation": "portrait",
+  "lang": "es-CO",
+  "categories": ["health", "fitness", "lifestyle"],
   "icons": [
     {
-      "src": "icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

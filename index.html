@@ -6,6 +6,10 @@
 <title>Rutina & Medidas — Seguimiento</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#12161A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rutina">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -454,11 +458,61 @@
     setTimeout(()=>t.classList.remove('show'), 2200);
   }
 
+  const DB_NAME = 'rutina-tracker-db';
+  const DB_STORE = 'kv';
+  const STORAGE_KEY = 'tracker-data';
+  let idbHandle = null, idbTried = false;
+
+  function openIDB(){
+    return new Promise(resolve => {
+      if(idbTried){ resolve(idbHandle); return; }
+      idbTried = true;
+      if(!('indexedDB' in window)){ resolve(null); return; }
+      try{
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => { req.result.createObjectStore(DB_STORE); };
+        req.onsuccess = () => { idbHandle = req.result; resolve(idbHandle); };
+        req.onerror = () => resolve(null);
+      }catch(e){ resolve(null); }
+    });
+  }
+  async function idbGet(key){
+    const db = await openIDB();
+    if(!db) return null;
+    return new Promise(resolve => {
+      try{
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => resolve(null);
+      }catch(e){ resolve(null); }
+    });
+  }
+  async function idbSet(key, value){
+    const db = await openIDB();
+    if(!db) return false;
+    return new Promise(resolve => {
+      try{
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put(value, key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      }catch(e){ resolve(false); }
+    });
+  }
+
+  // Persistencia real para navegador: IndexedDB como almacenamiento principal
+  // y localStorage como respaldo automático (por si IndexedDB no está disponible,
+  // p. ej. en modo incógnito o navegadores antiguos).
   async function loadData(){
-    try{
-      const res = await window.storage.get('tracker-data', false);
-      if(res && res.value) applyLoadedData(JSON.parse(res.value));
-    }catch(e){ /* first run */ }
+    let raw = null;
+    try{ raw = await idbGet(STORAGE_KEY); }catch(e){}
+    if(!raw){
+      try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
+    }
+    if(raw){
+      try{ applyLoadedData(JSON.parse(raw)); }catch(e){}
+    }
   }
   function applyLoadedData(parsed){
     data.daily = parsed.daily || {};
@@ -477,8 +531,9 @@
     }
   }
   async function saveData(){
-    try{ await window.storage.set('tracker-data', JSON.stringify(data), false); }
-    catch(e){ console.error('No se pudo guardar', e); }
+    const json = JSON.stringify(data);
+    try{ await idbSet(STORAGE_KEY, json); }catch(e){}
+    try{ localStorage.setItem(STORAGE_KEY, json); }catch(e){}
   }
 
   function allDatesRange(){
@@ -867,13 +922,29 @@ Cierra siempre con una línea aclarando que esto es una guía general y no reemp
     return html;
   }
 
+  // Genera una recomendación local (sin IA) cuando la llamada a Anthropic
+  // falla — por ejemplo en GitHub Pages, donde no hay clave de API configurada.
+  function buildLocalFallbackAdvice(streaks){
+    let html = '<h3>Resumen</h3>';
+    html += `<p>Racha actual: <b>${streaks.current} días</b>. Mejor racha: <b>${streaks.best} días</b>.</p>`;
+    html += '<h3>Recomendaciones</h3><ul>';
+    if(streaks.current === 0) html += '<li>Retoma hoy mismo con el entrenamiento del día — lo más difícil es siempre el primer paso después de una pausa.</li>';
+    else if(streaks.current < streaks.best) html += '<li>Vas bien, sigue así para acercarte a tu mejor racha.</li>';
+    else html += '<li>Estás en tu mejor racha — mantén la constancia, no cambies nada por ahora.</li>';
+    html += '<li>Recuerda registrar tus medidas (peso y cintura) semanalmente para ver la tendencia real, no solo el día a día.</li>';
+    html += '<li>En los días de fuerza, prioriza la técnica antes que la velocidad, sobre todo en el trabajo de oblicuos.</li>';
+    html += '</ul><p style="font-size:12px;color:var(--muted)">Recomendación generada localmente en tu dispositivo (sin IA) — no reemplaza asesoría profesional.</p>';
+    return html;
+  }
+
   async function askAI(){
     const btn = document.getElementById('askAiBtn');
     const resultEl = document.getElementById('aiResult');
     btn.disabled = true; btn.textContent = 'Pensando...';
     resultEl.innerHTML = '<p class="rest-note">Analizando tu registro...</p>';
+    const streaks = computeStreaks();
+    let text = null;
     try{
-      const streaks = computeStreaks();
       const userPrompt = `Racha actual: ${streaks.current} días de adherencia seguidos. Mejor racha: ${streaks.best} días.
 
 Tendencia de medidas:
@@ -895,24 +966,23 @@ Dame mi plan según el formato indicado.`;
       });
       const respData = await response.json();
       const textBlocks = (respData.content||[]).filter(b=>b.type==='text').map(b=>b.text);
-      const text = textBlocks.join('\n');
-      if(!text){
-        resultEl.innerHTML = '<p class="rest-note">No se pudo generar una respuesta. Intenta de nuevo.</p>';
-      } else {
-        const now = new Date();
-        data.aiAdvice = {date: toKey(now), time: now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}), text};
-        await saveData();
-        renderAiResult();
-      }
-    }catch(e){
-      resultEl.innerHTML = '<p class="rest-note">No se pudo conectar con la IA. Revisa tu conexión e intenta de nuevo.</p>';
+      text = textBlocks.join('\n');
+    }catch(e){}
+    const now = new Date();
+    if(text){
+      data.aiAdvice = {date: toKey(now), time: now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}), text, html:null};
+    } else {
+      data.aiAdvice = {date: toKey(now), time: now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}), text:null, html: buildLocalFallbackAdvice(streaks)};
     }
+    await saveData();
+    renderAiResult();
     btn.disabled = false; btn.textContent = '✨ Pedir recomendación';
   }
   function renderAiResult(){
     const resultEl = document.getElementById('aiResult');
     if(!data.aiAdvice){ resultEl.innerHTML=''; return; }
-    resultEl.innerHTML = `<div class="ai-box"><div class="ai-meta">Generado ${data.aiAdvice.date} · ${data.aiAdvice.time||''}</div>${simpleMarkdown(data.aiAdvice.text)}</div>`;
+    const body = data.aiAdvice.text ? simpleMarkdown(data.aiAdvice.text) : (data.aiAdvice.html || '');
+    resultEl.innerHTML = `<div class="ai-box"><div class="ai-meta">Generado ${data.aiAdvice.date} · ${data.aiAdvice.time||''}</div>${body}</div>`;
   }
 
   function renderHeatmap(){
