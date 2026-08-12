@@ -6,10 +6,6 @@
 <title>Rutina & Medidas — Seguimiento</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#12161A">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Rutina">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -244,8 +240,12 @@
       <span class="tag">recomendaciones</span>
     </div>
     <div class="card">
-      <p class="rest-note" style="margin-top:0;">Con tu registro de comidas, tu peso/cintura y tu adherencia a la rutina, la IA te arma un plan nutricional práctico y ajustes de entrenamiento. No reemplaza a un nutricionista o médico.</p>
-      <button class="btn-accent" id="askAiBtn" style="width:100%;">✨ Pedir recomendación</button>
+      <p class="rest-note" style="margin-top:0;">Con tu registro de comidas, tu peso/cintura y tu adherencia a la rutina, arma un prompt listo para pegar en la app de Claude. Pega ahí la respuesta y quedará guardada aquí. No reemplaza a un nutricionista o médico.</p>
+      <button class="btn-accent" id="askAiBtn" style="width:100%;">✨ Copiar prompt para Claude</button>
+      <div class="extra-fields show" style="margin-top:12px;">
+        <textarea id="aiPasteBox" rows="4" placeholder="Pega aquí la respuesta de Claude…"></textarea>
+        <button class="btn-ghost" id="saveAiBtn" style="align-self:flex-start;">Guardar respuesta</button>
+      </div>
       <div id="aiResult"></div>
     </div>
   </section>
@@ -379,13 +379,13 @@
         {id:'b_sideplankleg', name:'Plancha lateral con elevación de pierna', reps:'10 reps / lado'},
         {id:'b_flutter', name:'Flutter kicks', reps:'30 reps'},
         {id:'b_toetouch', name:'Toe touches', reps:'15 reps'},
-        {id:'b_wipers', name:'Limpiaparabrisas (windshield wipers)', reps:'12 reps (6/lado)'},
+        {id:'b_wipers', name:'Limpiaparabrisas (windshield wipers)', reps:'12 reps (6/lado) · rango controlado, sin forzar la espalda baja'},
       ]},
     { name:'Rutina C', block1:[
         {id:'c_squatjump', name:'Squat jumps', reps:'12 reps'},
         {id:'c_plankjacks', name:'Plank jacks', reps:'20 reps'},
         {id:'c_pushuprot', name:'Flexión con rotación (a T)', reps:'8–10 reps / lado'},
-        {id:'c_bulgarian', name:'Sentadilla búlgara', reps:'10 reps / pierna'},
+        {id:'c_bulgarian', name:'Sentadilla búlgara (pie trasero en silla/sofá)', reps:'10 reps / pierna'},
         {id:'c_starjumps', name:'Star jumps', reps:'15 reps'},
       ], block2:[
         {id:'c_standobl', name:'Abdominal oblicuo de pie (codo-rodilla)', reps:'20 reps (10/lado)'},
@@ -458,61 +458,27 @@
     setTimeout(()=>t.classList.remove('show'), 2200);
   }
 
-  const DB_NAME = 'rutina-tracker-db';
-  const DB_STORE = 'kv';
-  const STORAGE_KEY = 'tracker-data';
-  let idbHandle = null, idbTried = false;
+  // Capa de almacenamiento local. window.storage solo existe dentro de los
+  // artifacts de Claude.ai — como esta app corre sola (GitHub Pages / PWA
+  // instalada), usamos localStorage, que persiste en este dispositivo/navegador.
+  const LocalStore = {
+    get(key){
+      try{
+        const v = localStorage.getItem(key);
+        return v===null ? null : {value:v};
+      }catch(e){ return null; }
+    },
+    set(key, value){
+      try{ localStorage.setItem(key, value); return {value}; }
+      catch(e){ console.error('No se pudo guardar en localStorage', e); return null; }
+    }
+  };
 
-  function openIDB(){
-    return new Promise(resolve => {
-      if(idbTried){ resolve(idbHandle); return; }
-      idbTried = true;
-      if(!('indexedDB' in window)){ resolve(null); return; }
-      try{
-        const req = indexedDB.open(DB_NAME, 1);
-        req.onupgradeneeded = () => { req.result.createObjectStore(DB_STORE); };
-        req.onsuccess = () => { idbHandle = req.result; resolve(idbHandle); };
-        req.onerror = () => resolve(null);
-      }catch(e){ resolve(null); }
-    });
-  }
-  async function idbGet(key){
-    const db = await openIDB();
-    if(!db) return null;
-    return new Promise(resolve => {
-      try{
-        const tx = db.transaction(DB_STORE, 'readonly');
-        const req = tx.objectStore(DB_STORE).get(key);
-        req.onsuccess = () => resolve(req.result ?? null);
-        req.onerror = () => resolve(null);
-      }catch(e){ resolve(null); }
-    });
-  }
-  async function idbSet(key, value){
-    const db = await openIDB();
-    if(!db) return false;
-    return new Promise(resolve => {
-      try{
-        const tx = db.transaction(DB_STORE, 'readwrite');
-        tx.objectStore(DB_STORE).put(value, key);
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-      }catch(e){ resolve(false); }
-    });
-  }
-
-  // Persistencia real para navegador: IndexedDB como almacenamiento principal
-  // y localStorage como respaldo automático (por si IndexedDB no está disponible,
-  // p. ej. en modo incógnito o navegadores antiguos).
   async function loadData(){
-    let raw = null;
-    try{ raw = await idbGet(STORAGE_KEY); }catch(e){}
-    if(!raw){
-      try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
-    }
-    if(raw){
-      try{ applyLoadedData(JSON.parse(raw)); }catch(e){}
-    }
+    try{
+      const res = LocalStore.get('tracker-data');
+      if(res && res.value) applyLoadedData(JSON.parse(res.value));
+    }catch(e){ /* primer uso */ }
   }
   function applyLoadedData(parsed){
     data.daily = parsed.daily || {};
@@ -531,9 +497,8 @@
     }
   }
   async function saveData(){
-    const json = JSON.stringify(data);
-    try{ await idbSet(STORAGE_KEY, json); }catch(e){}
-    try{ localStorage.setItem(STORAGE_KEY, json); }catch(e){}
+    try{ LocalStore.set('tracker-data', JSON.stringify(data)); }
+    catch(e){ console.error('No se pudo guardar', e); }
   }
 
   function allDatesRange(){
@@ -624,7 +589,8 @@
       }
       const variant = variantForRecord(rec);
       titleEl.innerHTML = `Rutina de fuerza <span class="variant-badge">${variant.name}</span>`;
-      let html = '<div class="block-title">Full body</div>';
+      let html = '<p class="rest-note" style="margin-top:0;">Calienta 5 min (trote suave, movilidad de cadera/hombro) antes de empezar. Descansa ~30–45 seg entre rondas y ~60–90 seg entre bloques.</p>';
+      html += '<div class="block-title">Full body</div>';
       variant.block1.forEach(ex=>{
         const rounds = rec.items[ex.id] || 0;
         let dots = '';
@@ -638,6 +604,7 @@
         for(let r=1; r<=3; r++) dots += `<div class="round-dot ${r<=rounds?'filled':''}" data-ex="${ex.id}" data-round="${r}"></div>`;
         html += `<div class="ex-row"><div><div class="ex-name">${ex.name}</div><div class="ex-reps">${ex.reps} · x3 rondas</div></div><div class="rounds">${dots}</div></div>`;
       });
+      html += '<p class="rest-note">Cierra con 3–5 min de estiramiento (piernas, cadera y espalda baja).</p>';
       card.innerHTML = html;
       card.querySelectorAll('.round-dot').forEach(dot=>{
         dot.addEventListener('click', async ()=>{
@@ -707,6 +674,7 @@
         }
         const variant = STRENGTH_VARIANTS[extra.variantIndex % 3];
         extraBody += `<div style="margin-top:6px;"><span class="variant-badge">${variant.name}</span></div>`;
+        extraBody += '<p class="rest-note">Calienta 5 min antes y descansa ~30–45 seg entre rondas.</p>';
         extraBody += '<div class="block-title">Full body</div>';
         variant.block1.forEach(ex=>{
           const rounds = extra.items[ex.id] || 0;
@@ -922,30 +890,9 @@ Cierra siempre con una línea aclarando que esto es una guía general y no reemp
     return html;
   }
 
-  // Genera una recomendación local (sin IA) cuando la llamada a Anthropic
-  // falla — por ejemplo en GitHub Pages, donde no hay clave de API configurada.
-  function buildLocalFallbackAdvice(streaks){
-    let html = '<h3>Resumen</h3>';
-    html += `<p>Racha actual: <b>${streaks.current} días</b>. Mejor racha: <b>${streaks.best} días</b>.</p>`;
-    html += '<h3>Recomendaciones</h3><ul>';
-    if(streaks.current === 0) html += '<li>Retoma hoy mismo con el entrenamiento del día — lo más difícil es siempre el primer paso después de una pausa.</li>';
-    else if(streaks.current < streaks.best) html += '<li>Vas bien, sigue así para acercarte a tu mejor racha.</li>';
-    else html += '<li>Estás en tu mejor racha — mantén la constancia, no cambies nada por ahora.</li>';
-    html += '<li>Recuerda registrar tus medidas (peso y cintura) semanalmente para ver la tendencia real, no solo el día a día.</li>';
-    html += '<li>En los días de fuerza, prioriza la técnica antes que la velocidad, sobre todo en el trabajo de oblicuos.</li>';
-    html += '</ul><p style="font-size:12px;color:var(--muted)">Recomendación generada localmente en tu dispositivo (sin IA) — no reemplaza asesoría profesional.</p>';
-    return html;
-  }
-
-  async function askAI(){
-    const btn = document.getElementById('askAiBtn');
-    const resultEl = document.getElementById('aiResult');
-    btn.disabled = true; btn.textContent = 'Pensando...';
-    resultEl.innerHTML = '<p class="rest-note">Analizando tu registro...</p>';
+  function buildFullPrompt(){
     const streaks = computeStreaks();
-    let text = null;
-    try{
-      const userPrompt = `Racha actual: ${streaks.current} días de adherencia seguidos. Mejor racha: ${streaks.best} días.
+    const userPrompt = `Racha actual: ${streaks.current} días de adherencia seguidos. Mejor racha: ${streaks.best} días.
 
 Tendencia de medidas:
 ${buildTrendSummary()}
@@ -954,35 +901,40 @@ Mi registro de comidas reciente:
 ${buildFoodSummary()}
 
 Dame mi plan según el formato indicado.`;
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          model:'claude-sonnet-4-6',
-          max_tokens:1000,
-          system: AI_SYSTEM_PROMPT,
-          messages:[{role:'user', content:userPrompt}]
-        })
-      });
-      const respData = await response.json();
-      const textBlocks = (respData.content||[]).filter(b=>b.type==='text').map(b=>b.text);
-      text = textBlocks.join('\n');
-    }catch(e){}
-    const now = new Date();
-    if(text){
-      data.aiAdvice = {date: toKey(now), time: now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}), text, html:null};
-    } else {
-      data.aiAdvice = {date: toKey(now), time: now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}), text:null, html: buildLocalFallbackAdvice(streaks)};
+    return `${AI_SYSTEM_PROMPT}\n\n---\n\n${userPrompt}`;
+  }
+
+  async function askAI(){
+    // Esta app corre sola (fuera de Claude.ai), así que no puede llamar a la
+    // API de Anthropic directamente sin exponer una API key. En su lugar,
+    // copiamos un prompt listo para pegar en la app de Claude.
+    const fullPrompt = buildFullPrompt();
+    try{
+      await navigator.clipboard.writeText(fullPrompt);
+      showToast('Prompt copiado — pégalo en la app de Claude');
+    }catch(e){
+      const box = document.getElementById('aiPasteBox');
+      box.value = fullPrompt;
+      box.focus(); box.select();
+      showToast('No se pudo copiar automático — el prompt quedó seleccionado abajo');
     }
+  }
+
+  async function saveAiFromPaste(){
+    const box = document.getElementById('aiPasteBox');
+    const text = box.value.trim();
+    if(!text){ showToast('Pega primero la respuesta de Claude'); return; }
+    const now = new Date();
+    data.aiAdvice = {date: toKey(now), time: now.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}), text};
     await saveData();
+    box.value = '';
     renderAiResult();
-    btn.disabled = false; btn.textContent = '✨ Pedir recomendación';
+    showToast('Recomendación guardada');
   }
   function renderAiResult(){
     const resultEl = document.getElementById('aiResult');
     if(!data.aiAdvice){ resultEl.innerHTML=''; return; }
-    const body = data.aiAdvice.text ? simpleMarkdown(data.aiAdvice.text) : (data.aiAdvice.html || '');
-    resultEl.innerHTML = `<div class="ai-box"><div class="ai-meta">Generado ${data.aiAdvice.date} · ${data.aiAdvice.time||''}</div>${body}</div>`;
+    resultEl.innerHTML = `<div class="ai-box"><div class="ai-meta">Generado ${data.aiAdvice.date} · ${data.aiAdvice.time||''}</div>${simpleMarkdown(data.aiAdvice.text)}</div>`;
   }
 
   function renderHeatmap(){
@@ -1087,6 +1039,7 @@ Dame mi plan según el formato indicado.`;
   });
   document.getElementById('addFoodBtn').addEventListener('click', addFood);
   document.getElementById('askAiBtn').addEventListener('click', askAI);
+  document.getElementById('saveAiBtn').addEventListener('click', saveAiFromPaste);
 
   document.getElementById('reminderToggle').addEventListener('click', async ()=>{
     data.settings.reminderOn = !data.settings.reminderOn; await saveData(); renderAll();
