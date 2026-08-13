@@ -5,8 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Rutina & Medidas — Seguimiento</title>
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#12161A">
+<link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAFbUlEQVR4nK1Wa2xcxRX+zpmZe3fXXq8dJzZ+1DGJQY0THqlLoDRJoUTgQKRULY1U8SNA1QiBBKhSK1S1Umkr8YNK0L8ghFq1an9UqhAIlMqkVSUXIhCJAiFJkyYOMUn8iB+79j7uvTOnP3bXa+9dW0ph/sydc86c453zHerp2xyEgRMBAIDKO6FyBqi8CQQgQGqkCr18EqoeqbyDiX3P06UwsM5RTX75VvfZgBsnVl1F5CIKwWIdrZCvBrHKinOXU1Z8EzknDKq/8KUu4UrOltPWNBnnLqfUc4k4ruLLShEAEmlgoOZFo1AaxLdaBAIADQzUBNwazNpyq0VMECINJ7W/F4CACaSRbIbxaGHehaW1auInpSnNxYIr5iGO4OqDYBAtaSeGNmQhfpN77qX0K2+v23aHiULXqFJgpih0ux9K/P7w+kM/TxM5QNiAlv81JLr6OsGMoORMizz7q4wx2LUX7/+jsGnQP3E0cNHK0AkArJXW9dTdb8avFoa/rzRlZmfcqy9kxSltqJpe4nIKiSBw9x9IHfxxet8jumezXP6M/vBywVnq7lNhIGWlRGBCGIiNxEbSN2AmL7k//q6Qm6X+Qfnu4/rgsy07H/Cj0FG1czAIBDiHDT38xC9SW7bTR6PhQtaOnbX//cTm5u26TiXVGjknYPfV7XrjTV4USkeXnr0WnToeXfncTl6WU8fcnfepHz7X1NRSK4IuG4gC19mrzxyPWAsr9G7S6Yzaca+/5Wvm4rmSdRakUhkZ2pns6sOe7yWfP5QTRIuF8K5vpfyUbLldnTrmohDTE5aZN/SosU+tNgwiTQLn0L2Jd97v9w1QGLKXpHzOecbdssN0dvOefanbh5rHLuR/9LPkxgHF5EZHSqVStP9g2+B21dmLIDCLORuF8pUBPTlOmTbaNeznZoqzU6IZDKZiye0aTnzzgYRz4iIJSkJMJgFn0T9gvnFP203bEj94KtmUwpE3itmsdPervQdadg+33vL19A29PgjaYyIOCiLinMjwgdS2O71SQcDQAngenfwwHBxSg0PKWtIGNkQUiDH4z6fFk+8VZ65FA7fqXz+ZbVvP9z7ol9J27HQ4fTWXbrW33aWUgY1EIMqDUuQlcPTd0sUzkfFJAA0nStPJD8JMOxLJ5mSTaI/SGRiPL52PEs3m5PHs2Y/tR6M6OysdXbyY57++mh89XBJavOMe/8abU5+fj/yk1hpz0zI3jZkJfvNP+bHTVhuGEw2QiCjFly+6ga18/jRycwhLWMjK3/+WD0rsJ3V+0UahZUUbOv0Xf7Lw/kiRoYuL1k+of48Uz5wI9j+ayM5CLBIptPfSxLgozSKgSjcVYYXLF+w7fwmKi7zj2yoMXCLBG25QStP8jGWAiSD0z7cW/vVmiaBEhIhyc85PqI4uJsfGw/ZddG2K3vpzYW6q+g4IugxxIiDh11/MtXVQc0uGSQ/eKt95zL86xlcvWWNIRAAyHoMqTVAb+uxsuHXIv3vY7x+UyQl19Ij77U/nwwIbw678kp1ocAXgnYNSvDCHXx7Kpteh9bX0gw83/ebp3MK8M54WV/FjCXuVxtQVmy/YPcNNoyPFF57JBkVyoWKGW2rDTNTe2VPfbgVKo+tGbsnQxXPRwhzFQG9JUFrb0btRTU+5yXERIVo5ETAztXf01GEIASBYC2thdGPYqdlwiKwoRUqV87yiXTNzOUUrYpByEArlO2svYniKUJ1W4njHaIixApGKRw24sSCW/IhzuX6Mis9uX2w1GFtWBfFVKGvLs0hslqkfPa5jkIkLa8RyVH+8znTV5AUkYM/zYi79vxrrtDMZz2hPa8VKKiBN8ZrH9MWckJhP5SlCMRH9Dw8RkMROM3M3AAAAAElFTkSuQmCC">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="theme-color" content="#12161A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rutina">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
@@ -458,27 +463,62 @@
     setTimeout(()=>t.classList.remove('show'), 2200);
   }
 
-  // Capa de almacenamiento local. window.storage solo existe dentro de los
-  // artifacts de Claude.ai — como esta app corre sola (GitHub Pages / PWA
-  // instalada), usamos localStorage, que persiste en este dispositivo/navegador.
-  const LocalStore = {
-    get(key){
+  // Persistencia real para navegador: IndexedDB como almacenamiento principal
+  // y localStorage como respaldo automático (por si IndexedDB no está disponible,
+  // p. ej. en modo incógnito o navegadores antiguos). window.storage NO se usa
+  // aquí porque solo existe dentro de los artifacts de Claude.ai.
+  const DB_NAME = 'rutina-tracker-db';
+  const DB_STORE = 'kv';
+  const STORAGE_KEY = 'tracker-data';
+  let idbHandle = null, idbTried = false;
+
+  function openIDB(){
+    return new Promise(resolve => {
+      if(idbTried){ resolve(idbHandle); return; }
+      idbTried = true;
+      if(!('indexedDB' in window)){ resolve(null); return; }
       try{
-        const v = localStorage.getItem(key);
-        return v===null ? null : {value:v};
-      }catch(e){ return null; }
-    },
-    set(key, value){
-      try{ localStorage.setItem(key, value); return {value}; }
-      catch(e){ console.error('No se pudo guardar en localStorage', e); return null; }
-    }
-  };
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = () => { req.result.createObjectStore(DB_STORE); };
+        req.onsuccess = () => { idbHandle = req.result; resolve(idbHandle); };
+        req.onerror = () => resolve(null);
+      }catch(e){ resolve(null); }
+    });
+  }
+  async function idbGet(key){
+    const db = await openIDB();
+    if(!db) return null;
+    return new Promise(resolve => {
+      try{
+        const tx = db.transaction(DB_STORE, 'readonly');
+        const req = tx.objectStore(DB_STORE).get(key);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => resolve(null);
+      }catch(e){ resolve(null); }
+    });
+  }
+  async function idbSet(key, value){
+    const db = await openIDB();
+    if(!db) return false;
+    return new Promise(resolve => {
+      try{
+        const tx = db.transaction(DB_STORE, 'readwrite');
+        tx.objectStore(DB_STORE).put(value, key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      }catch(e){ resolve(false); }
+    });
+  }
 
   async function loadData(){
-    try{
-      const res = LocalStore.get('tracker-data');
-      if(res && res.value) applyLoadedData(JSON.parse(res.value));
-    }catch(e){ /* primer uso */ }
+    let raw = null;
+    try{ raw = await idbGet(STORAGE_KEY); }catch(e){}
+    if(!raw){
+      try{ raw = localStorage.getItem(STORAGE_KEY); }catch(e){}
+    }
+    if(raw){
+      try{ applyLoadedData(JSON.parse(raw)); }catch(e){ /* datos corruptos, se ignoran */ }
+    }
   }
   function applyLoadedData(parsed){
     data.daily = parsed.daily || {};
@@ -497,8 +537,9 @@
     }
   }
   async function saveData(){
-    try{ LocalStore.set('tracker-data', JSON.stringify(data)); }
-    catch(e){ console.error('No se pudo guardar', e); }
+    const json = JSON.stringify(data);
+    try{ await idbSet(STORAGE_KEY, json); }catch(e){}
+    try{ localStorage.setItem(STORAGE_KEY, json); }catch(e){ console.error('No se pudo guardar en localStorage', e); }
   }
 
   function allDatesRange(){

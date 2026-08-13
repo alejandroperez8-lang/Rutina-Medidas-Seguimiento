@@ -1,52 +1,67 @@
-const CACHE_NAME = 'rutina-app-v2';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+const CACHE_NAME = "rutina-tracker-v3";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS_TO_CACHE))
-      .then(() => self.skipWaiting()) // activa la nueva versión sin esperar a que se cierren todas las pestañas
+      .then(cache => cache.addAll(APP_SHELL))
+      .then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then((names) => {
-      return Promise.all(
-        names.filter((name) => name !== CACHE_NAME)
-             .map((name) => caches.delete(name)) // limpia versiones viejas de caché
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key !== CACHE_NAME)
+            .map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
+self.addEventListener("fetch", event => {
+  if (event.request.method !== "GET") return;
 
-  // Para la navegación (el HTML principal) usamos "network-first": así, si
-  // subes una versión nueva a GitHub Pages, el usuario la recibe de inmediato
-  // en vez de quedarse atascado con la copia cacheada. Si no hay red, cae al caché.
-  if (req.mode === 'navigate') {
+  // El HTML (la app en sí) se busca primero en la red, para que las
+  // actualizaciones se vean de inmediato. Si no hay internet, se usa
+  // la copia guardada como respaldo.
+  const isHTML = event.request.mode === "navigate" ||
+    event.request.destination === "document" ||
+    event.request.url.endsWith("/") ||
+    event.request.url.endsWith("index.html");
+
+  if (isHTML) {
     event.respondWith(
-      fetch(req)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          return response;
-        })
-        .catch(() => caches.match(req).then((r) => r || caches.match('./index.html')))
+      fetch(event.request).then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      }).catch(() => caches.match(event.request).then(c => c || caches.match("./index.html")))
     );
     return;
   }
 
-  // Para el resto de assets propios (íconos, manifest) usamos "cache-first".
+  // El resto de archivos estáticos (íconos, manifest) sí usan caché
+  // primero, para que la app cargue rápido y funcione sin conexión.
   event.respondWith(
-    caches.match(req).then((response) => response || fetch(req))
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(event.request).then(response => {
+        if (!response || response.status !== 200 || response.type === "opaque") {
+          return response;
+        }
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      });
+    })
   );
 });
